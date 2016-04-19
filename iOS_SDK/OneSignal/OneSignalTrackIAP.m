@@ -107,7 +107,8 @@ NSMutableDictionary* skusToTrack;
     }
     
     if ([arrayOfPruchases count] > 0)
-        [[OneSignal defaultClient] performSelector:@selector(sendPurchases:) withObject:arrayOfPruchases];
+        for (OneSignal *client in [OneSignal allClients])
+            [client performSelector:@selector(sendPurchases:) withObject:arrayOfPruchases];
 }
 
 #pragma clang diagnostic pop

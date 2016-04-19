@@ -28,7 +28,7 @@ typedef void (^OneSignalHandleNotificationBlock)(NSString* message, NSDictionary
 /**
  `OneSignal` provides a high level interface to interact with OneSignal's push service.
  
- `OneSignal` exposes a defaultClient for applications which use a globally available client to share configuration settings.
+ `OneSignal` exposes a collection of clients for applications which use globally available clients.
  
  Include `#import "OneSignal/OneSignal.h"` in your application files to access OneSignal's methods.
  
@@ -70,13 +70,14 @@ typedef NS_ENUM(NSUInteger, ONE_S_LOG_LEVEL) {
 
 - (id)initWithLaunchOptions:(NSDictionary*)launchOptions appId:(NSString*)appId handleNotification:(OneSignalHandleNotificationBlock)callback autoRegister:(BOOL)autoRegister;
 
++ (OneSignal *)oneSignalWithLaunchOptions:(NSDictionary*)launchOptions appId:(NSString*)appId handleNotification:(OneSignalHandleNotificationBlock)callback autoRegister:(BOOL)autoRegister;
+
 // Only use if you passed FALSE to autoRegister
 - (void)registerForPushNotifications;
 
 + (void)setLogLevel:(ONE_S_LOG_LEVEL)logLevel visualLevel:(ONE_S_LOG_LEVEL)visualLogLevel;
 
-+ (void)setDefaultClient:(OneSignal*)client;
-+ (OneSignal*)defaultClient;
++ (NSArray<OneSignal*>*)allClients;
 
 - (void)sendTag:(NSString*)key value:(NSString*)value onSuccess:(OneSignalResultSuccessBlock)successBlock onFailure:(OneSignalFailureBlock)failureBlock;
 - (void)sendTag:(NSString*)key value:(NSString*)value;

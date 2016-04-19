@@ -41,7 +41,7 @@
 #define NOTIFICATION_TYPE_ALERT 4
 #define NOTIFICATION_TYPE_ALL 7
 
-static OneSignal* defaultClient = nil;
+static NSMutableDictionary<NSString *, OneSignal*> *__allClients = nil;
 static ONE_S_LOG_LEVEL _nsLogLevel = ONE_S_LL_WARN;
 static ONE_S_LOG_LEVEL _visualLogLevel = ONE_S_LL_NONE;
 
@@ -168,6 +168,7 @@ static bool location_event_fired;
             if (self.app_id == nil)
                 self.app_id = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"GameThrive_APPID"];
         }
+        NSAssert(self.app_id, @"You must supply a valid OneSignal AppId");
         
         disableBadgeClearing = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"OneSignal_disable_badge_clearing"];
         
@@ -180,8 +181,10 @@ static bool location_event_fired;
         self.deviceModel   = [NSString stringWithCString:systemInfo.machine encoding:NSUTF8StringEncoding];
         self.systemVersion = [[UIDevice currentDevice] systemVersion];
         
-        if (defaultClient == nil)
-            defaultClient = self;
+        if (__allClients == nil)
+            __allClients = [NSMutableDictionary dictionaryWithObject:self forKey:self.app_id];
+        else
+            __allClients[self.app_id] = self;
         
         // Handle changes to the app id. This might happen on a developer's device when testing.
         NSUserDefaults* defaults = [NSUserDefaults standardUserDefaults];
@@ -1076,13 +1079,8 @@ int getNotificationTypes() {
     }
 }
 
-
-+ (void)setDefaultClient:(OneSignal*)client {
-    onesignal_Log(ONE_S_LL_WARN, @"Depercated, this is automaticly set to the first instace of OneSignal you create.");
-}
-
-+ (OneSignal*)defaultClient {
-    return defaultClient;
++ (NSArray<OneSignal*>*)allClients {
+    return __allClients.allValues;
 }
 
 - (void)enableInAppAlertNotification:(BOOL)enable {
@@ -1368,8 +1366,8 @@ static void injectSelector(Class newClass, SEL newSel, Class addToClass, SEL mak
 @implementation UIApplication(OneSignalPush)
 
 - (void)oneSignalDidRegisterForRemoteNotifications:(UIApplication*)app deviceToken:(NSData*)inDeviceToken {
-    if ([OneSignal defaultClient])
-        [[OneSignal defaultClient] didRegisterForRemoteNotifications:app deviceToken:inDeviceToken];
+    for (OneSignal *client in [OneSignal allClients])
+        [client didRegisterForRemoteNotifications:app deviceToken:inDeviceToken];
     
     if ([self respondsToSelector:@selector(oneSignalDidRegisterForRemoteNotifications:deviceToken:)])
         [self oneSignalDidRegisterForRemoteNotifications:app deviceToken:inDeviceToken];
@@ -1383,8 +1381,8 @@ static void injectSelector(Class newClass, SEL newSel, Class addToClass, SEL mak
 }
 
 - (void)oneSignalDidRegisterUserNotifications:(UIApplication*)application settings:(UIUserNotificationSettings*)notificationSettings {
-    if ([OneSignal defaultClient])
-        [[OneSignal defaultClient] updateNotificationTypes:notificationSettings.types];
+    for (OneSignal *client in [OneSignal allClients])
+        [client updateNotificationTypes:notificationSettings.types];
     
     if ([self respondsToSelector:@selector(oneSignalDidRegisterUserNotifications:settings:)])
         [self oneSignalDidRegisterUserNotifications:application settings:notificationSettings];
@@ -1393,8 +1391,8 @@ static void injectSelector(Class newClass, SEL newSel, Class addToClass, SEL mak
 
 // Notification opened! iOS 6 ONLY!
 - (void)oneSignalReceivedRemoteNotification:(UIApplication*)application userInfo:(NSDictionary*)userInfo {
-    if ([OneSignal defaultClient])
-        [[OneSignal defaultClient] notificationOpened:userInfo isActive:[application applicationState] == UIApplicationStateActive];
+    for (OneSignal *client in [OneSignal allClients])
+        [client notificationOpened:userInfo isActive:[application applicationState] == UIApplicationStateActive];
     
     if ([self respondsToSelector:@selector(oneSignalReceivedRemoteNotification:userInfo:)])
         [self oneSignalReceivedRemoteNotification:application userInfo:userInfo];
@@ -1402,8 +1400,8 @@ static void injectSelector(Class newClass, SEL newSel, Class addToClass, SEL mak
 
 // Notification opened or silent one received on iOS 7 & 8
 - (void) oneSignalRemoteSilentNotification:(UIApplication*)application UserInfo:(NSDictionary*)userInfo fetchCompletionHandler:(void (^)(UIBackgroundFetchResult)) completionHandler {
-    if ([OneSignal defaultClient])
-        [[OneSignal defaultClient] remoteSilentNotification:application UserInfo:userInfo];
+    for (OneSignal *client in [OneSignal allClients])
+        [client remoteSilentNotification:application UserInfo:userInfo];
     
     if ([self respondsToSelector:@selector(oneSignalRemoteSilentNotification:UserInfo:fetchCompletionHandler:)])
         [self oneSignalRemoteSilentNotification:application UserInfo:userInfo fetchCompletionHandler:completionHandler];
@@ -1412,8 +1410,8 @@ static void injectSelector(Class newClass, SEL newSel, Class addToClass, SEL mak
 }
 
 - (void) oneSignalLocalNotificationOpened:(UIApplication*)application handleActionWithIdentifier:(NSString*)identifier forLocalNotification:(UILocalNotification*)notification completionHandler:(void(^)()) completionHandler {
-    
-    [[OneSignal defaultClient] processLocalActionBasedNotification:notification identifier:identifier];
+    for (OneSignal *client in [OneSignal allClients])
+        [client processLocalActionBasedNotification:notification identifier:identifier];
     
     if ([self respondsToSelector:@selector(oneSignalLocalNotificationOpened:handleActionWithIdentifier:forLocalNotification:completionHandler:)])
         [self oneSignalLocalNotificationOpened:application handleActionWithIdentifier:identifier forLocalNotification:notification completionHandler:completionHandler];
@@ -1422,24 +1420,24 @@ static void injectSelector(Class newClass, SEL newSel, Class addToClass, SEL mak
 }
 
 - (void)oneSignalLocalNotificaionOpened:(UIApplication*)application notification:(UILocalNotification*)notification {
-    if ([OneSignal defaultClient])
-        [[OneSignal defaultClient] processLocalActionBasedNotification:notification identifier:@"__DEFAULT__"];
+    for (OneSignal *client in [OneSignal allClients])
+        [client processLocalActionBasedNotification:notification identifier:@"__DEFAULT__"];
     
     if ([self respondsToSelector:@selector(oneSignalLocalNotificaionOpened:notification:)])
         [self oneSignalLocalNotificaionOpened:application notification:notification];
 }
 
 - (void)oneSignalApplicationWillResignActive:(UIApplication*)application {
-    if ([OneSignal defaultClient])
-        [[OneSignal defaultClient] onFocus:@"suspend"];
+    for (OneSignal *client in [OneSignal allClients])
+        [client onFocus:@"suspend"];
     
     if ([self respondsToSelector:@selector(oneSignalApplicationWillResignActive:)])
         [self oneSignalApplicationWillResignActive:application];
 }
 
 - (void)oneSignalApplicationDidBecomeActive:(UIApplication*)application {
-    if ([OneSignal defaultClient])
-        [[OneSignal defaultClient] onFocus:@"resume"];
+    for (OneSignal *client in [OneSignal allClients])
+        [client onFocus:@"resume"];
     
     if ([self respondsToSelector:@selector(oneSignalApplicationDidBecomeActive:)])
         [self oneSignalApplicationDidBecomeActive:application];
