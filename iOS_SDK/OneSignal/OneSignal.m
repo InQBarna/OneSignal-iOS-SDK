@@ -56,6 +56,8 @@ static ONE_S_LOG_LEVEL _visualLogLevel = ONE_S_LL_NONE;
 @property(nonatomic, readwrite, copy) NSString *deviceModel;
 @property(nonatomic, readwrite, copy) NSString *systemVersion;
 @property(nonatomic, retain) OneSignalHTTPClient *httpClient;
+@property(nonatomic) bool oneSignalReg;
+@property(nonatomic) bool waitingForOneSReg;
 
 @end
 
@@ -85,8 +87,6 @@ UIBackgroundTaskIdentifier focusBackgroundTask;
 OneSignalTrackIAP* trackIAPPurchase;
 
 bool registeredWithApple = false; // Has attempted to register for push notifications with Apple.
-bool oneSignalReg = false;
-bool waitingForOneSReg = false;
 NSNumber* lastTrackedTime;
 NSNumber* unSentActiveTime;
 NSNumber* timeToPingWith;
@@ -386,10 +386,10 @@ NSNumber* getNetType() {
 
 - (void)registerUser {
     // Make sure we only call create or on_session once per run of the app.
-    if (oneSignalReg || waitingForOneSReg)
+    if (self.oneSignalReg || self.waitingForOneSReg)
         return;
     
-    waitingForOneSReg = true;
+    self.waitingForOneSReg = true;
     
     NSMutableURLRequest* request;
     if (mUserId == nil)
@@ -456,12 +456,12 @@ NSNumber* getNetType() {
     }
     
     [self enqueueRequest:request onSuccess:^(NSDictionary* results) {
-        oneSignalReg = true;
-        waitingForOneSReg = false;
+        self.oneSignalReg = true;
+        self.waitingForOneSReg = false;
         if ([results objectForKey:@"id"] != nil) {
             NSUserDefaults* defaults = [NSUserDefaults standardUserDefaults];
             mUserId = [results objectForKey:@"id"];
-            [defaults setObject:mUserId forKey:@"GT_PLAYER_ID"];
+            [defaults setObject:mUserId forKey:[NSString stringWithFormat:@"%@-%@", self.app_id, @"GT_PLAYER_ID"]];
             [defaults synchronize];
             
             if (mDeviceToken)
@@ -490,8 +490,8 @@ NSNumber* getNetType() {
             }
         }
     } onFailure:^(NSError* error) {
-        oneSignalReg = false;
-        waitingForOneSReg = false;
+        self.oneSignalReg = false;
+        self.waitingForOneSReg = false;
         onesignal_Log(ONE_S_LL_ERROR, [NSString stringWithFormat: @"Error registering with OneSignal: %@", error]);
     }];
 }
