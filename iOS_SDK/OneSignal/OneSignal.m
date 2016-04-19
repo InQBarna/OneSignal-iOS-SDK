@@ -189,20 +189,20 @@ static bool location_event_fired;
         // Handle changes to the app id. This might happen on a developer's device when testing.
         NSUserDefaults* defaults = [NSUserDefaults standardUserDefaults];
         if (self.app_id == nil)
-            self.app_id = [defaults stringForKey:@"GT_APP_ID"];
-        else if (![self.app_id isEqualToString:[defaults stringForKey:@"GT_APP_ID"]]) {
-            [defaults setObject:self.app_id forKey:@"GT_APP_ID"];
-            [defaults setObject:nil forKey:@"GT_PLAYER_ID"];
+            self.app_id = [defaults stringForKey:[NSString stringWithFormat:@"%@-%@", self.app_id, @"GT_APP_ID"]];
+        else if (![self.app_id isEqualToString:[defaults stringForKey:[NSString stringWithFormat:@"%@-%@", self.app_id, @"GT_APP_ID"]]]) {
+            [defaults setObject:self.app_id forKey:[NSString stringWithFormat:@"%@-%@", self.app_id, @"GT_APP_ID"]];
+            [defaults setObject:nil forKey:[NSString stringWithFormat:@"%@-%@", self.app_id, @"GT_PLAYER_ID"]];
             [defaults synchronize];
         }
         
-        mUserId = [defaults stringForKey:@"GT_PLAYER_ID"];
-        mDeviceToken = [defaults stringForKey:@"GT_DEVICE_TOKEN"];
+        mUserId = [defaults stringForKey:[NSString stringWithFormat:@"%@-%@", self.app_id, @"GT_PLAYER_ID"]];
+        mDeviceToken = [defaults stringForKey:[NSString stringWithFormat:@"%@-%@", self.app_id, @"GT_DEVICE_TOKEN"]];
         if (([[UIApplication sharedApplication] respondsToSelector:@selector(currentUserNotificationSettings)]))
             registeredWithApple = [[UIApplication sharedApplication] currentUserNotificationSettings].types != (NSUInteger)nil;
         else
-            registeredWithApple = mDeviceToken != nil || [defaults boolForKey:@"GT_REGISTERED_WITH_APPLE"];
-        mSubscriptionSet = [defaults objectForKey:@"ONESIGNAL_SUBSCRIPTION"] == nil;
+            registeredWithApple = mDeviceToken != nil || [defaults boolForKey:[NSString stringWithFormat:@"%@-%@", self.app_id, @"GT_REGISTERED_WITH_APPLE"]];
+        mSubscriptionSet = [defaults objectForKey:[NSString stringWithFormat:@"%@-%@", self.app_id, @"ONESIGNAL_SUBSCRIPTION"]] == nil;
         mNotificationTypes = getNotificationTypes();
         
         // Register this device with Apple's APNS server.
@@ -296,7 +296,7 @@ void onesignal_Log(ONE_S_LOG_LEVEL logLevel, NSString* message) {
         [[UIApplication sharedApplication] registerForRemoteNotificationTypes:UIRemoteNotificationTypeBadge | UIRemoteNotificationTypeSound | UIRemoteNotificationTypeAlert];
         if (!registeredWithApple) {
             NSUserDefaults* defaults = [NSUserDefaults standardUserDefaults];
-            [defaults setObject:@YES forKey:@"GT_REGISTERED_WITH_APPLE"];
+            [defaults setObject:@YES forKey:[NSString stringWithFormat:@"%@-%@", self.app_id, @"GT_REGISTERED_WITH_APPLE"]];
             [defaults synchronize];
         }
     }
@@ -306,7 +306,7 @@ void onesignal_Log(ONE_S_LOG_LEVEL logLevel, NSString* message) {
     [self updateDeviceToken:inDeviceToken onSuccess:successBlock onFailure:failureBlock];
     
     NSUserDefaults* defaults = [NSUserDefaults standardUserDefaults];
-    [defaults setObject:mDeviceToken forKey:@"GT_DEVICE_TOKEN"];
+    [defaults setObject:mDeviceToken forKey:[NSString stringWithFormat:@"%@-%@", self.app_id, @"GT_DEVICE_TOKEN"]];
     [defaults synchronize];
 }
 
@@ -768,7 +768,7 @@ NSString* getUsableDeviceToken() {
 - (NSNumber*)getUnsentActiveTime {
     if ([unSentActiveTime intValue] == -1) {
         NSUserDefaults* defaults = [NSUserDefaults standardUserDefaults];
-        unSentActiveTime = [defaults objectForKey:@"GT_UNSENT_ACTIVE_TIME"];
+        unSentActiveTime = [defaults objectForKey:[NSString stringWithFormat:@"%@-%@", self.app_id, @"GT_UNSENT_ACTIVE_TIME"]];
         if (unSentActiveTime == nil)
             unSentActiveTime = 0;
     }
@@ -779,7 +779,7 @@ NSString* getUsableDeviceToken() {
 - (void)saveUnsentActiveTime:(NSNumber*)time {
     unSentActiveTime = time;
     NSUserDefaults* defaults = [NSUserDefaults standardUserDefaults];
-    [defaults setObject:time forKey:@"GT_UNSENT_ACTIVE_TIME"];
+    [defaults setObject:time forKey:[NSString stringWithFormat:@"%@-%@", self.app_id, @"GT_UNSENT_ACTIVE_TIME"]];
     [defaults synchronize];
     
 }
@@ -808,7 +808,7 @@ NSString* getUsableDeviceToken() {
     BOOL inAppAlert = false;
     if (isActive) {
         NSUserDefaults* defaults = [NSUserDefaults standardUserDefaults];
-        inAppAlert = [defaults boolForKey:@"ONESIGNAL_INAPP_ALERT"];
+        inAppAlert = [defaults boolForKey:[NSString stringWithFormat:@"%@-%@", self.app_id, @"ONESIGNAL_INAPP_ALERT"]];
         
         if (inAppAlert) {
             self.lastMessageReceived = messageDict;
@@ -1085,7 +1085,7 @@ int getNotificationTypes() {
 
 - (void)enableInAppAlertNotification:(BOOL)enable {
     NSUserDefaults* defaults = [NSUserDefaults standardUserDefaults];
-    [defaults setBool:enable forKey:@"ONESIGNAL_INAPP_ALERT"];
+    [defaults setBool:enable forKey:[NSString stringWithFormat:@"%@-%@", self.app_id, @"ONESIGNAL_INAPP_ALERT"]];
     [defaults synchronize];
 }
 
@@ -1095,7 +1095,7 @@ int getNotificationTypes() {
         value = @"no";
     
     NSUserDefaults* defaults = [NSUserDefaults standardUserDefaults];
-    [defaults setObject:value forKey:@"ONESIGNAL_SUBSCRIPTION"];
+    [defaults setObject:value forKey:[NSString stringWithFormat:@"%@-%@", self.app_id, @"ONESIGNAL_SUBSCRIPTION"]];
     [defaults synchronize];
     
     mSubscriptionSet = enable;
