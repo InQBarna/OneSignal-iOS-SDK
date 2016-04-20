@@ -106,6 +106,7 @@ typedef NS_ENUM(NSUInteger, ONE_S_LOG_LEVEL) {
 - (void)postNotification:(NSDictionary*)jsonData;
 - (void)postNotification:(NSDictionary*)jsonData onSuccess:(OneSignalResultSuccessBlock)successBlock onFailure:(OneSignalFailureBlock)failureBlock;
 - (void)postNotificationWithJsonString:(NSString*)jsonData onSuccess:(OneSignalResultSuccessBlock)successBlock onFailure:(OneSignalFailureBlock)failureBlock;
+- (void)getNotificationsWithAPIKey:(NSString *)apiKey limit:(NSInteger)limit offset:(NSInteger)offset onSuccess:(OneSignalResultSuccessBlock)successBlock onFailure:(OneSignalFailureBlock)failureBlock;
 
 - (void)promptLocation;
 

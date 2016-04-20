@@ -1029,6 +1029,39 @@ int getNotificationTypes() {
     }
 }
 
+- (void)getNotificationsWithAPIKey:(NSString *)apiKey limit:(NSInteger)limit offset:(NSInteger)offset onSuccess:(OneSignalResultSuccessBlock)successBlock onFailure:(OneSignalFailureBlock)failureBlock {
+    NSString* endpoint = @"notifications";
+    NSMutableArray *queryComponents = NSMutableArray.new;
+    if (self.app_id) {
+        [queryComponents addObject:[NSString stringWithFormat:@"app_id=%@", self.app_id]];
+    }
+    if (limit > 0) {
+        [queryComponents addObject:[NSString stringWithFormat:@"limit=%ld", (long)limit]];
+    }
+    if (offset > 0) {
+        [queryComponents addObject:[NSString stringWithFormat:@"offset=%ld", (long)offset]];
+    }
+    NSString* path = [endpoint stringByAppendingFormat:@"?%@", [queryComponents componentsJoinedByString:@"&"]];
+    NSMutableURLRequest* request = [self.httpClient requestWithMethod:@"GET" path:path];
+    NSString *authorization = [NSString stringWithFormat:@"Basic %@", apiKey];
+    [request setValue:authorization forHTTPHeaderField:@"Authorization"];
+    [self enqueueRequest:request
+               onSuccess:^(NSDictionary* results) {
+                   NSData* jsonData = [NSJSONSerialization dataWithJSONObject:results options:0 error:nil];
+                   NSString* jsonResultsString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
+                   
+                   onesignal_Log(ONE_S_LL_DEBUG, [NSString stringWithFormat: @"HTTP get notifications success %@", jsonResultsString]);
+                   if (successBlock)
+                       successBlock(results);
+               }
+               onFailure:^(NSError* error) {
+                   onesignal_Log(ONE_S_LL_ERROR, @"Get notifications failed");
+                   onesignal_Log(ONE_S_LL_INFO, [NSString stringWithFormat: @"%@", error]);
+                   if (failureBlock)
+                       failureBlock(error);
+               }];
+}
+
 - (void)enqueueRequest:(NSURLRequest*)request onSuccess:(OneSignalResultSuccessBlock)successBlock onFailure:(OneSignalFailureBlock)failureBlock {
     [self enqueueRequest:request onSuccess:successBlock onFailure:failureBlock isSynchronous:false];
 }
