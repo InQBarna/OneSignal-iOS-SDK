@@ -234,7 +234,7 @@ static bool location_event_fired;
     return self;
 }
 
-+ (OneSignal *)oneSignalWithLaunchOptions:(NSDictionary*)launchOptions appId:(NSString*)appId handleNotification:(OneSignalHandleNotificationBlock)callback autoRegister:(BOOL)autoRegister {
++ (instancetype)clientWithLaunchOptions:(NSDictionary*)launchOptions appId:(NSString*)appId handleNotification:(OneSignalHandleNotificationBlock)callback autoRegister:(BOOL)autoRegister {
     NSString *multitonKey = (appId ?: [[NSBundle mainBundle] objectForInfoDictionaryKey:@"OneSignal_APPID"] ?: [[NSBundle mainBundle] objectForInfoDictionaryKey:@"GameThrive_APPID"]);
     if (multitonKey && __allClients[multitonKey])
         return __allClients[multitonKey];
