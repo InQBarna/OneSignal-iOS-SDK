@@ -792,9 +792,9 @@ NSString* getUsableDeviceToken() {
     
 }
 
-- (void)sendPurchases:(NSArray*)purchases {
+- (BOOL)sendPurchases:(NSArray*)purchases {
     if (mUserId == nil)
-        return;
+        return YES;
     
     NSMutableURLRequest* request = [self.httpClient requestWithMethod:@"POST" path:[NSString stringWithFormat:@"players/%@/on_purchase", mUserId]];
     
@@ -809,9 +809,10 @@ NSString* getUsableDeviceToken() {
     [self enqueueRequest:request
                onSuccess:nil
                onFailure:nil];
+    return YES;
 }
 
-- (void)notificationOpened:(NSDictionary*)messageDict isActive:(BOOL)isActive {
+- (BOOL)notificationOpened:(NSDictionary*)messageDict isActive:(BOOL)isActive {
     
     BOOL inAppAlert = false;
     if (isActive) {
@@ -839,11 +840,12 @@ NSString* getUsableDeviceToken() {
             }
             
             [alertView show];
-            return;
+            return YES;
         }
     }
     
     [self handleNotificationOpened:messageDict isActive:isActive];
+    return YES;
     
 }
 
@@ -1122,7 +1124,7 @@ int getNotificationTypes() {
     }];
 }
 
-- (void) remoteSilentNotification:(UIApplication*)application UserInfo:(NSDictionary*)userInfo {
+- (BOOL) remoteSilentNotification:(UIApplication*)application UserInfo:(NSDictionary*)userInfo {
     // If 'm' present then the notification has action buttons attached to it.
     
     NSDictionary* data = nil;
@@ -1180,9 +1182,10 @@ int getNotificationTypes() {
     }
     else if (application.applicationState != UIApplicationStateBackground)
         [self notificationOpened:userInfo isActive:[application applicationState] == UIApplicationStateActive];
+    return YES;
 }
 
-- (void)processLocalActionBasedNotification:(UILocalNotification*) notification identifier:(NSString*)identifier {
+- (BOOL)processLocalActionBasedNotification:(UILocalNotification*) notification identifier:(NSString*)identifier {
     if (notification.userInfo) {
         NSMutableDictionary* userInfo, *customDict, *additionalData, *optionsDict;
         
@@ -1198,7 +1201,7 @@ int getNotificationTypes() {
             optionsDict = userInfo[@"o"];
         }
         else
-            return;
+            return YES;
         
         NSMutableArray* buttonArray = [[NSMutableArray alloc] init];
         for (NSDictionary* button in optionsDict) {
@@ -1221,6 +1224,7 @@ int getNotificationTypes() {
         
         [self notificationOpened:userInfo isActive:[[UIApplication sharedApplication] applicationState] == UIApplicationStateActive];
     }
+    return YES;
 }
 
 - (void) promptLocation {
@@ -1400,7 +1404,8 @@ static void injectSelector(Class newClass, SEL newSel, Class addToClass, SEL mak
 // Notification opened! iOS 6 ONLY!
 - (void)oneSignalReceivedRemoteNotification:(UIApplication*)application userInfo:(NSDictionary*)userInfo {
     for (OneSignal *client in [OneSignal allClients])
-        [client notificationOpened:userInfo isActive:[application applicationState] == UIApplicationStateActive];
+        if ([client notificationOpened:userInfo isActive:[application applicationState] == UIApplicationStateActive])
+            break;
     
     if ([self respondsToSelector:@selector(oneSignalReceivedRemoteNotification:userInfo:)])
         [self oneSignalReceivedRemoteNotification:application userInfo:userInfo];
@@ -1409,7 +1414,8 @@ static void injectSelector(Class newClass, SEL newSel, Class addToClass, SEL mak
 // Notification opened or silent one received on iOS 7 & 8
 - (void) oneSignalRemoteSilentNotification:(UIApplication*)application UserInfo:(NSDictionary*)userInfo fetchCompletionHandler:(void (^)(UIBackgroundFetchResult)) completionHandler {
     for (OneSignal *client in [OneSignal allClients])
-        [client remoteSilentNotification:application UserInfo:userInfo];
+        if ([client remoteSilentNotification:application UserInfo:userInfo])
+            break;
     
     if ([self respondsToSelector:@selector(oneSignalRemoteSilentNotification:UserInfo:fetchCompletionHandler:)])
         [self oneSignalRemoteSilentNotification:application UserInfo:userInfo fetchCompletionHandler:completionHandler];
@@ -1419,7 +1425,8 @@ static void injectSelector(Class newClass, SEL newSel, Class addToClass, SEL mak
 
 - (void) oneSignalLocalNotificationOpened:(UIApplication*)application handleActionWithIdentifier:(NSString*)identifier forLocalNotification:(UILocalNotification*)notification completionHandler:(void(^)()) completionHandler {
     for (OneSignal *client in [OneSignal allClients])
-        [client processLocalActionBasedNotification:notification identifier:identifier];
+        if ([client processLocalActionBasedNotification:notification identifier:identifier])
+            break;
     
     if ([self respondsToSelector:@selector(oneSignalLocalNotificationOpened:handleActionWithIdentifier:forLocalNotification:completionHandler:)])
         [self oneSignalLocalNotificationOpened:application handleActionWithIdentifier:identifier forLocalNotification:notification completionHandler:completionHandler];
@@ -1429,7 +1436,8 @@ static void injectSelector(Class newClass, SEL newSel, Class addToClass, SEL mak
 
 - (void)oneSignalLocalNotificaionOpened:(UIApplication*)application notification:(UILocalNotification*)notification {
     for (OneSignal *client in [OneSignal allClients])
-        [client processLocalActionBasedNotification:notification identifier:@"__DEFAULT__"];
+        if ([client processLocalActionBasedNotification:notification identifier:@"__DEFAULT__"])
+            break;
     
     if ([self respondsToSelector:@selector(oneSignalLocalNotificaionOpened:notification:)])
         [self oneSignalLocalNotificaionOpened:application notification:notification];

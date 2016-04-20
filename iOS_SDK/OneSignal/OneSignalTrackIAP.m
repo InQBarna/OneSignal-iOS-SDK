@@ -30,6 +30,10 @@
 #import "OneSignalTrackIAP.h"
 #import "OneSignal.h"
 
+@interface OneSignal ()
+- (BOOL)sendPurchases:(NSArray*)purchases;
+@end
+
 @implementation OneSignalTrackIAP
 
 static Class skPaymentQueue;
@@ -108,7 +112,8 @@ NSMutableDictionary* skusToTrack;
     
     if ([arrayOfPruchases count] > 0)
         for (OneSignal *client in [OneSignal allClients])
-            [client performSelector:@selector(sendPurchases:) withObject:arrayOfPruchases];
+            if ([client sendPurchases:arrayOfPruchases])
+                break;
 }
 
 #pragma clang diagnostic pop
