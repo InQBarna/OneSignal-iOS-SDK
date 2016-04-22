@@ -58,6 +58,7 @@ static ONE_S_LOG_LEVEL _visualLogLevel = ONE_S_LL_NONE;
 @property(nonatomic, retain) OneSignalHTTPClient *httpClient;
 @property(nonatomic) bool oneSignalReg;
 @property(nonatomic) bool waitingForOneSReg;
+@property(nonatomic, strong) NSString* mUserId;
 
 @end
 
@@ -77,7 +78,7 @@ NSString* emailToSet;
 NSString* mDeviceToken;
 OneSignalResultSuccessBlock tokenUpdateSuccessBlock;
 OneSignalFailureBlock tokenUpdateFailureBlock;
-NSString* mUserId;
+
 
 OneSignalIdsAvailableBlock idsAvailableBlockWhenReady;
 OneSignalHandleNotificationBlock handleNotification;
@@ -196,7 +197,7 @@ static bool location_event_fired;
             [defaults synchronize];
         }
         
-        mUserId = [defaults stringForKey:[NSString stringWithFormat:@"%@-%@", self.app_id, @"GT_PLAYER_ID"]];
+        self.mUserId = [defaults stringForKey:[NSString stringWithFormat:@"%@-%@", self.app_id, @"GT_PLAYER_ID"]];
         mDeviceToken = [defaults stringForKey:[NSString stringWithFormat:@"%@-%@", self.app_id, @"GT_DEVICE_TOKEN"]];
         if (([[UIApplication sharedApplication] respondsToSelector:@selector(currentUserNotificationSettings)]))
             registeredWithApple = [[UIApplication sharedApplication] currentUserNotificationSettings].types != (NSUInteger)nil;
@@ -213,7 +214,7 @@ static bool location_event_fired;
             [[UIApplication sharedApplication] registerForRemoteNotifications];
         
         
-        if (mUserId != nil)
+        if (self.mUserId != nil)
             [self registerUser];
         else // Fall back incase Apple does not responsed in time.
             [self performSelector:@selector(registerUser) withObject:nil afterDelay:30.0f];
@@ -320,7 +321,7 @@ void onesignal_Log(ONE_S_LOG_LEVEL logLevel, NSString* message) {
 
 - (void)updateDeviceToken:(NSString*)deviceToken onSuccess:(OneSignalResultSuccessBlock)successBlock onFailure:(OneSignalFailureBlock)failureBlock {
     
-    if (mUserId == nil) {
+    if (self.mUserId == nil) {
         mDeviceToken = deviceToken;
         tokenUpdateSuccessBlock = successBlock;
         tokenUpdateFailureBlock = failureBlock;
@@ -346,7 +347,7 @@ void onesignal_Log(ONE_S_LOG_LEVEL logLevel, NSString* message) {
     mDeviceToken = deviceToken;
     
     NSMutableURLRequest* request;
-    request = [self.httpClient requestWithMethod:@"PUT" path:[NSString stringWithFormat:@"players/%@", mUserId]];
+    request = [self.httpClient requestWithMethod:@"PUT" path:[NSString stringWithFormat:@"players/%@", self.mUserId]];
     
     NSDictionary* dataDic = [NSDictionary dictionaryWithObjectsAndKeys:
                              self.app_id, @"app_id",
@@ -362,7 +363,7 @@ void onesignal_Log(ONE_S_LOG_LEVEL logLevel, NSString* message) {
     if (idsAvailableBlockWhenReady) {
         mNotificationTypes = getNotificationTypes();
         if (getUsableDeviceToken())
-            idsAvailableBlockWhenReady(mUserId, getUsableDeviceToken());
+            idsAvailableBlockWhenReady(self.mUserId, getUsableDeviceToken());
         idsAvailableBlockWhenReady = nil;
     }
 }
@@ -400,10 +401,10 @@ NSNumber* getNetType() {
     self.waitingForOneSReg = true;
     
     NSMutableURLRequest* request;
-    if (mUserId == nil)
+    if (self.mUserId == nil)
         request = [self.httpClient requestWithMethod:@"POST" path:@"players"];
     else
-        request = [self.httpClient requestWithMethod:@"POST" path:[NSString stringWithFormat:@"players/%@/on_session", mUserId]];
+        request = [self.httpClient requestWithMethod:@"POST" path:[NSString stringWithFormat:@"players/%@/on_session", self.mUserId]];
     
     NSDictionary* infoDictionary = [[NSBundle mainBundle]infoDictionary];
     NSString* build = infoDictionary[(NSString*)kCFBundleVersionKey];
@@ -429,7 +430,7 @@ NSNumber* getNetType() {
     
     dataDic[@"net_type"] = getNetType();
     
-    if (mUserId == nil) {
+    if (self.mUserId == nil) {
         dataDic[@"sdk_type"] = mSDKType;
         dataDic[@"ios_bundle"] = [[NSBundle mainBundle] bundleIdentifier];
     }
@@ -468,8 +469,8 @@ NSNumber* getNetType() {
         self.waitingForOneSReg = false;
         if ([results objectForKey:@"id"] != nil) {
             NSUserDefaults* defaults = [NSUserDefaults standardUserDefaults];
-            mUserId = [results objectForKey:@"id"];
-            [defaults setObject:mUserId forKey:[NSString stringWithFormat:@"%@-%@", self.app_id, @"GT_PLAYER_ID"]];
+            self.mUserId = [results objectForKey:@"id"];
+            [defaults setObject:self.mUserId forKey:[NSString stringWithFormat:@"%@-%@", self.app_id, @"GT_PLAYER_ID"]];
             [defaults synchronize];
             
             if (mDeviceToken)
@@ -492,7 +493,7 @@ NSNumber* getNetType() {
             }
             
             if (idsAvailableBlockWhenReady) {
-                idsAvailableBlockWhenReady(mUserId, getUsableDeviceToken());
+                idsAvailableBlockWhenReady(self.mUserId, getUsableDeviceToken());
                 if (getUsableDeviceToken())
                     idsAvailableBlockWhenReady = nil;
             }
@@ -505,10 +506,10 @@ NSNumber* getNetType() {
 }
 
 - (void)IdsAvailable:(OneSignalIdsAvailableBlock)idsAvailableBlock {
-    if (mUserId)
-        idsAvailableBlock(mUserId, getUsableDeviceToken());
+    if (self.mUserId)
+        idsAvailableBlock(self.mUserId, getUsableDeviceToken());
     
-    if (mUserId == nil || getUsableDeviceToken() == nil)
+    if (self.mUserId == nil || getUsableDeviceToken() == nil)
         idsAvailableBlockWhenReady = idsAvailableBlock;
 }
 
@@ -539,7 +540,7 @@ NSString* getUsableDeviceToken() {
     if (NSFoundationVersionNumber < NSFoundationVersionNumber_iOS_6_0)
         return;
     
-    if (mUserId == nil) {
+    if (self.mUserId == nil) {
         if (tagsToSend == nil)
             tagsToSend = [keyValuePair mutableCopy];
         else
@@ -547,7 +548,7 @@ NSString* getUsableDeviceToken() {
         return;
     }
     
-    NSMutableURLRequest* request = [self.httpClient requestWithMethod:@"PUT" path:[NSString stringWithFormat:@"players/%@", mUserId]];
+    NSMutableURLRequest* request = [self.httpClient requestWithMethod:@"PUT" path:[NSString stringWithFormat:@"players/%@", self.mUserId]];
     
     NSDictionary* dataDic = [NSDictionary dictionaryWithObjectsAndKeys:
                              self.app_id, @"app_id",
@@ -573,15 +574,15 @@ NSString* getUsableDeviceToken() {
 
 
 - (void)setEmail:(NSString*)email {
-    if (NSFoundationVersionNumber < NSFoundationVersionNumber_iOS_6_0 || mUserId == nil)
+    if (NSFoundationVersionNumber < NSFoundationVersionNumber_iOS_6_0 || self.mUserId == nil)
         return;
     
-    if (mUserId == nil) {
+    if (self.mUserId == nil) {
         emailToSet = email;
         return;
     }
     
-    NSMutableURLRequest* request = [self.httpClient requestWithMethod:@"PUT" path:[NSString stringWithFormat:@"players/%@", mUserId]];
+    NSMutableURLRequest* request = [self.httpClient requestWithMethod:@"PUT" path:[NSString stringWithFormat:@"players/%@", self.mUserId]];
     
     NSDictionary* dataDic = [NSDictionary dictionaryWithObjectsAndKeys:
                              self.app_id, @"app_id",
@@ -600,11 +601,11 @@ NSString* getUsableDeviceToken() {
 }
 
 - (void)getTags:(OneSignalResultSuccessBlock)successBlock onFailure:(OneSignalFailureBlock)failureBlock {
-    if (NSFoundationVersionNumber < NSFoundationVersionNumber_iOS_6_0 || mUserId == nil)
+    if (NSFoundationVersionNumber < NSFoundationVersionNumber_iOS_6_0 || self.mUserId == nil)
         return;
     
     NSMutableURLRequest* request;
-    request = [self.httpClient requestWithMethod:@"GET" path:[NSString stringWithFormat:@"players/%@", mUserId]];
+    request = [self.httpClient requestWithMethod:@"GET" path:[NSString stringWithFormat:@"players/%@", self.mUserId]];
     
     [self enqueueRequest:request onSuccess:^(NSDictionary* results) {
         if ([results objectForKey:@"tags"] != nil)
@@ -626,11 +627,11 @@ NSString* getUsableDeviceToken() {
 }
 
 - (void)deleteTags:(NSArray*)keys onSuccess:(OneSignalResultSuccessBlock)successBlock onFailure:(OneSignalFailureBlock)failureBlock {
-    if (NSFoundationVersionNumber < NSFoundationVersionNumber_iOS_6_0 || mUserId == nil)
+    if (NSFoundationVersionNumber < NSFoundationVersionNumber_iOS_6_0 || self.mUserId == nil)
         return;
     
     NSMutableURLRequest* request;
-    request = [self.httpClient requestWithMethod:@"PUT" path:[NSString stringWithFormat:@"players/%@", mUserId]];
+    request = [self.httpClient requestWithMethod:@"PUT" path:[NSString stringWithFormat:@"players/%@", self.mUserId]];
     
     NSMutableDictionary* deleteTagsDict = [NSMutableDictionary dictionary];
     for(id key in keys)
@@ -666,9 +667,9 @@ NSString* getUsableDeviceToken() {
 
 - (void) sendNotificationTypesUpdateIsConfirmed:(BOOL)isConfirm {
     // User changed notification settings for the app.
-    if (mNotificationTypes != -1 && mUserId && (isConfirm || mNotificationTypes != getNotificationTypes()) ) {
+    if (mNotificationTypes != -1 && self.mUserId && (isConfirm || mNotificationTypes != getNotificationTypes()) ) {
         mNotificationTypes = getNotificationTypes();
-        NSMutableURLRequest* request = [self.httpClient requestWithMethod:@"PUT" path:[NSString stringWithFormat:@"players/%@", mUserId]];
+        NSMutableURLRequest* request = [self.httpClient requestWithMethod:@"PUT" path:[NSString stringWithFormat:@"players/%@", self.mUserId]];
         
         NSDictionary* dataDic = [NSDictionary dictionaryWithObjectsAndKeys:
                                  self.app_id, @"app_id",
@@ -681,7 +682,7 @@ NSString* getUsableDeviceToken() {
         [self enqueueRequest:request onSuccess:nil onFailure:nil];
         
         if (getUsableDeviceToken() && idsAvailableBlockWhenReady) {
-            idsAvailableBlockWhenReady(mUserId, getUsableDeviceToken());
+            idsAvailableBlockWhenReady(self.mUserId, getUsableDeviceToken());
             idsAvailableBlockWhenReady = nil;
         }
     }
@@ -725,12 +726,12 @@ NSString* getUsableDeviceToken() {
         timeToPingWith = totalTimeActive;
     }
     
-    if (mUserId == nil)
+    if (self.mUserId == nil)
         return;
     
     // If resuming and badge was set, clear it on the server as well.
     if (wasBadgeSet && [state isEqualToString:@"resume"]) {
-        NSMutableURLRequest* request = [self.httpClient requestWithMethod:@"PUT" path:[NSString stringWithFormat:@"players/%@", mUserId]];
+        NSMutableURLRequest* request = [self.httpClient requestWithMethod:@"PUT" path:[NSString stringWithFormat:@"players/%@", self.mUserId]];
         
         NSDictionary* dataDic = [NSDictionary dictionaryWithObjectsAndKeys:
                                  self.app_id, @"app_id",
@@ -752,7 +753,7 @@ NSString* getUsableDeviceToken() {
             
             
             
-            NSMutableURLRequest* request = [self.httpClient requestWithMethod:@"POST" path:[NSString stringWithFormat:@"players/%@/on_focus", mUserId]];
+            NSMutableURLRequest* request = [self.httpClient requestWithMethod:@"POST" path:[NSString stringWithFormat:@"players/%@/on_focus", self.mUserId]];
             NSDictionary* dataDic = [NSDictionary dictionaryWithObjectsAndKeys:
                                      self.app_id, @"app_id",
                                      @"ping", @"state",
@@ -793,10 +794,10 @@ NSString* getUsableDeviceToken() {
 }
 
 - (BOOL)sendPurchases:(NSArray*)purchases {
-    if (mUserId == nil)
+    if (self.mUserId == nil)
         return YES;
     
-    NSMutableURLRequest* request = [self.httpClient requestWithMethod:@"POST" path:[NSString stringWithFormat:@"players/%@/on_purchase", mUserId]];
+    NSMutableURLRequest* request = [self.httpClient requestWithMethod:@"POST" path:[NSString stringWithFormat:@"players/%@/on_purchase", self.mUserId]];
     
     NSDictionary *dataDic = [NSDictionary dictionaryWithObjectsAndKeys:
                              self.app_id, @"app_id",
@@ -863,7 +864,7 @@ NSString* getUsableDeviceToken() {
     
     NSDictionary* dataDic = [NSDictionary dictionaryWithObjectsAndKeys:
                              self.app_id, @"app_id",
-                             mUserId, @"player_id",
+                             self.mUserId, @"player_id",
                              @(YES), @"opened",
                              nil];
     
@@ -934,13 +935,13 @@ int getNotificationTypes() {
     
     mNotificationTypes = notificationTypes;
     
-    if (mUserId == nil && mDeviceToken)
+    if (self.mUserId == nil && mDeviceToken)
         [self registerUser];
     else if (mDeviceToken)
         [self sendNotificationTypesUpdateIsConfirmed:changed];
     
-    if (idsAvailableBlockWhenReady && mUserId && getUsableDeviceToken())
-        idsAvailableBlockWhenReady(mUserId, getUsableDeviceToken());
+    if (idsAvailableBlockWhenReady && self.mUserId && getUsableDeviceToken())
+        idsAvailableBlockWhenReady(self.mUserId, getUsableDeviceToken());
 }
 
 - (NSDictionary*)getAdditionalData {
@@ -1151,7 +1152,7 @@ int getNotificationTypes() {
     NSString* parsedDeviceToken = [[trimmedDeviceToken componentsSeparatedByString:@" "] componentsJoinedByString:@""];
     onesignal_Log((ONE_S_LOG_LEVEL)ONE_S_LL_INFO, [NSString stringWithFormat:@"Device Registered with Apple: %@", parsedDeviceToken]);
     [self registerDeviceToken:parsedDeviceToken onSuccess:^(NSDictionary* results) {
-        onesignal_Log(ONE_S_LL_INFO, [NSString stringWithFormat: @"Device Registered with OneSignal: %@", mUserId]);
+        onesignal_Log(ONE_S_LL_INFO, [NSString stringWithFormat: @"Device Registered with OneSignal: %@", self.mUserId]);
     } onFailure:^(NSError* error) {
         onesignal_Log(ONE_S_LL_ERROR, [NSString stringWithFormat: @"Error in OneSignal Registration: %@", error]);
     }];
@@ -1289,7 +1290,7 @@ int getNotificationTypes() {
     currentLocation->horizontalAccuracy = [[location valueForKey:@"horizontalAccuracy"] doubleValue];
     currentLocation->cords = cords;
     
-    if (mUserId == nil) {
+    if (self.mUserId == nil) {
         lastLocation = currentLocation;
         return;
     }
@@ -1299,7 +1300,7 @@ int getNotificationTypes() {
 
 - (void) sendLocation:(os_last_location*)location {
     
-    NSMutableURLRequest* request = [self.httpClient requestWithMethod:@"PUT" path:[NSString stringWithFormat:@"players/%@", mUserId]];
+    NSMutableURLRequest* request = [self.httpClient requestWithMethod:@"PUT" path:[NSString stringWithFormat:@"players/%@", self.mUserId]];
     
     NSDictionary* dataDic = [NSDictionary dictionaryWithObjectsAndKeys:
                              self.app_id, @"app_id",
